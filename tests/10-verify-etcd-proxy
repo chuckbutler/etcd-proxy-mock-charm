@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+import amulet
+import requests
+import unittest
+import yaml
+from os.path import join
+from os.path import abspath
+from os.path import dirname
+
+import os
+
+
+class TestDeployment(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.deployment = amulet.Deployment(series='trusty')
+        bundle_path = abspath(join(dirname(__file__), 'etcd-cluster.yml'))
+
+        with open(bundle_path, 'r') as bundle_file:
+            contents = yaml.safe_load(bundle_file)
+            cls.deployment.load(contents)
+
+        try:
+            cls.deployment.setup(timeout=900)
+            cls.deployment.sentry.wait()
+        except amulet.helpers.TimeoutError:
+            amulet.raise_status(amulet.SKIP, msg="Environment wasn't stood up in time")
+        except:
+            raise
+
+    def test_cluster_string(self):
+        """
+        ETCD Cluster Strings look similar to the following once the cluster has
+        settled.
+
+        'cluster': 'etcd1=http://10.0.3.207:7001,etcd0=http://10.0.3.23:7001,etcd2=http://10.0.3.214:7001'
+
+        Verify that we get the important components in the cluster string. The
+        odd variety of issues here is when the test kicks off before the
+        cluster has fully settled, and recycled.
+
+        Verify that we have bare minimum the host we're connecting to, and the
+        master node (typically node0) - as this is all thats really required.
+
+        Raft will take care of reconfiguring the ETCD node once it has fully
+        initialized and done gossip with the cluster.
+
+        """
+        rdata = self.deployment.sentry['etcd/0'].relation('proxy', 'proxymock:proxy')
+        rdata2 = self.deployment.sentry['etcd/1'].relation('proxy', 'proxymock:proxy')
+        rdata3 = self.deployment.sentry['etcd/2'].relation('proxy', 'proxymock:proxy')
+
+        host = self.deployment.sentry['etcd/0'].info['public-address']
+        host2 = self.deployment.sentry['etcd/1'].info['public-address']
+        host3 = self.deployment.sentry['etcd/2'].info['public-address']
+
+        assert "cluster" in rdata.keys()
+
+        assert host in rdata["cluster"]
+        assert host in rdata2["cluster"]
+        assert host2 in rdata2["cluster"]
+        assert host in rdata3["cluster"]
+        assert host3 in rdata3["cluster"]
+
+
+
+if __name__ == '__main__':
+    unittest.main()

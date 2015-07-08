@@ -1,0 +1,12 @@
+etcdtest:
+  services:
+    etcd:
+      charm: local:trusty/etcd
+      exposed: true
+      num_units: 3
+    "proxymock":
+      charm: local:trusty/etcd-proxy-mock
+      num_units: 1
+  relations:
+    - ['etcd:proxy', 'proxymock:proxy']
+  series: trusty

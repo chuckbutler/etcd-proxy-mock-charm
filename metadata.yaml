@@ -1,0 +1,15 @@
+name: etcd-proxy-mock
+summary: Mock charm only used to test ETCDs proxy relation
+maintainers:
+    - Cory Benfield <cory.benfield@projectcalico.org>
+    - Charles Butler <charles.butler@canonical.com>
+description: |
+  A mock charm that consumes the proxy relationship from an ETCD cluster, and
+  verifies the data sent otw - without requiring an OpenStack cluster.
+tags:
+  - misc
+subordinate: false
+requires:
+  proxy:
+    interface: etcd-proxy
+
